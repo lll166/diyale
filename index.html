@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"抵押了" 图片生成器</title>
+    <style>
+        :root {
+            --primary: #1a1a1a;
+            --bg: #f4f4f5;
+            --btn-hover: #333;
+            --accent: #d4a574;
+            --slider-track: #d1d1d1;
+            --slider-fill: #666;
+            --toggle-bg: #d1d1d1;
+            --toggle-active: #444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem 2rem 1.8rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            max-width: 820px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 1.5rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.9rem;
+            justify-content: center;
+            margin-bottom: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            border: none;
+            transition: background 0.2s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            background: var(--btn-hover);
+        }
+        .btn-outline {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .btn-outline:hover {
+            background: var(--bg);
+        }
+        .btn-reset {
+            background: white;
+            color: #777;
+            border: 1.5px solid #ddd;
+            font-size: 0.85rem;
+            padding: 8px 18px;
+        }
+        .btn-reset:hover {
+            background: #f5f5f5;
+            border-color: #bbb;
+            color: #555;
+        }
+
+        /* ── 滑杆样式 ── */
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: #f9f9f9;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            transition: border-color 0.25s;
+        }
+        .slider-group:hover {
+            border-color: #c5c5c5;
+        }
+        .slider-label {
+            font-size: 0.85rem;
+            color: #555;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .slider-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #333;
+            min-width: 2.6em;
+            text-align: right;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            width: 120px;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #555;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            transition: background 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #333;
+        }
+
+        /* ── 开关样式 ── */
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: #f9f9f9;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            padding: 0.35rem 0.8rem 0.35rem 1rem;
+            transition: border-color 0.25s;
+            cursor: pointer;
+        }
+        .toggle-group:hover {
+            border-color: #c5c5c5;
+        }
+        .toggle-label {
+            font-size: 0.85rem;
+            color: #555;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            border-radius: 26px;
+            transition: background-color 0.3s;
+        }
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: #444;
+        }
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(22px);
+        }
+        .toggle-hint {
+            font-size: 0.78rem;
+            color: #999;
+            min-width: 5em;
+            text-align: left;
+            transition: color 0.3s;
+        }
+        .toggle-hint.active {
+            color: #444;
+            font-weight: 500;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 0.3rem;
+            margin-bottom: 0.8rem;
+            min-height: 1.2em;
+            transition: color 0.3s;
+        }
+        .hint.active {
+            color: #666;
+        }
+
+        .canvas-container {
+            margin-top: 1rem;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            background: #fafafa;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .canvas-container.dragging {
+            border-color: #999;
+            border-style: solid;
+        }
+        .canvas-container.grabbable {
+            border-color: #bbb;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>"抵押了" 图片处理工具</h1>
+        <p class="subtitle">上传图片 → 选择比例 → 调节抵押程度 → 拖拽水印 → 下载</p>
+
+        <!-- 按钮行 -->
+        <div class="controls">
+            <label class="btn">
+                📁 选择图片
+                <input type="file" id="imageInput" accept="image/*">
+            </label>
+            <button class="btn btn-reset" id="resetStampBtn" style="display: none;">↺ 重置水印位置</button>
+            <button class="btn btn-outline" id="downloadBtn" style="display: none;">⬇ 下载 PNG</button>
+        </div>
+
+        <!-- 开关 + 滑杆行 -->
+        <div class="controls" style="margin-top: 0.4rem;">
+            <!-- 1:1 方形图开关 -->
+            <div class="toggle-group" id="toggleGroup" style="display: none;" title="切换原图比例 / 1:1方形裁剪">
+                <span class="toggle-label">🔲 1:1方形图</span>
+                <label class="toggle-switch" onclick="event.stopPropagation();">
+                    <input type="checkbox" id="squareToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-hint" id="toggleHint">原图比例</span>
+            </div>
+
+            <!-- 抵押程度滑杆 -->
+            <div class="slider-group" id="sliderGroup" style="display: none;">
+                <span class="slider-label">🏠 抵押程度</span>
+                <input type="range" id="graySlider" min="0" max="100" value="80" step="1">
+                <span class="slider-value" id="sliderValue">80%</span>
+            </div>
+        </div>
+
+        <p class="hint" id="hintText"></p>
+
+        <div class="canvas-container" id="canvasContainer">
+            <span id="placeholderText" style="color: #999;">请先上传一张图片</span>
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const imageInput = document.getElementById('imageInput');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resetStampBtn = document.getElementById('resetStampBtn');
+            const placeholderText = document.getElementById('placeholderText');
+            const hintText = document.getElementById('hintText');
+            const canvasContainer = document.getElementById('canvasContainer');
+            const graySlider = document.getElementById('graySlider');
+            const sliderValue = document.getElementById('sliderValue');
+            const sliderGroup = document.getElementById('sliderGroup');
+            const squareToggle = document.getElementById('squareToggle');
+            const toggleGroup = document.getElementById('toggleGroup');
+            const toggleHint = document.getElementById('toggleHint');
+
+            let currentImage = null; // 原始上传图片
+            let grayIntensity = 80;
+            let isSquareMode = false; // 是否裁剪为 1:1 方形
+
+            // ── 水印状态 ──
+            let stampX = 0;
+            let stampY = 0;
+            let stampScale = 1;
+            let isDragging = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            // ── 获取裁剪后的源绘制参数 ──
+            // 返回 { sx, sy, sw, sh, dx, dy, dw, dh } 用于 ctx.drawImage
+            function getDrawParams() {
+                if (!currentImage) return null;
+                const imgW = currentImage.width;
+                const imgH = currentImage.height;
+
+                if (!isSquareMode) {
+                    // 原图比例：画布 = 图片尺寸
+                    return {
+                        sx: 0,
+                        sy: 0,
+                        sw: imgW,
+                        sh: imgH,
+                        dx: 0,
+                        dy: 0,
+                        dw: imgW,
+                        dh: imgH,
+                        canvasW: imgW,
+                        canvasH: imgH,
+                    };
+                } else {
+                    // 1:1 方形：取中心正方形
+                    const size = Math.min(imgW, imgH);
+                    const sx = (imgW - size) / 2;
+                    const sy = (imgH - size) / 2;
+                    return {
+                        sx,
+                        sy,
+                        sw: size,
+                        sh: size,
+                        dx: 0,
+                        dy: 0,
+                        dw: size,
+                        dh: size,
+                        canvasW: size,
+                        canvasH: size,
+                    };
+                }
+            }
+
+            // ── 坐标转换 ──
+            function getCanvasCoords(clientX, clientY) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY,
+                };
+            }
+
+            // ── 命中检测（逆旋转） ──
+            function hitTestStamp(mx, my) {
+                if (!currentImage) return false;
+                const dx = mx - stampX;
+                const dy = my - stampY;
+                const angle = 20 * Math.PI / 180;
+                const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
+                const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
+                const halfW = 300 * stampScale;
+                const halfH = 150 * stampScale;
+                return Math.abs(localX) < halfW && Math.abs(localY) < halfH;
+            }
+
+            // ── 核心绘制 ──
+            function redrawAll() {
+                if (!currentImage) return;
+
+                const params = getDrawParams();
+                canvas.width = params.canvasW;
+                canvas.height = params.canvasH;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 1. 绘制裁剪后的图片
+                ctx.drawImage(
+                    currentImage,
+                    params.sx,
+                    params.sy,
+                    params.sw,
+                    params.sh,
+                    params.dx,
+                    params.dy,
+                    params.dw,
+                    params.dh
+                );
+
+                // 2. 灰色正片叠底（抵押程度）
+                if (grayIntensity > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = grayIntensity / 100;
+                    ctx.globalCompositeOperation = 'multiply';
+                    ctx.fillStyle = '#b0b0b0';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
+
+                // 3. 水印
+                drawStamp(ctx, stampX, stampY, stampScale);
+            }
+
+            // ── 绘制水印 ──
+            function drawStamp(ctx, cx, cy, scale) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(-20 * Math.PI / 180);
+
+                ctx.strokeStyle = '#1a1a1a';
+                ctx.fillStyle = '#1a1a1a';
+                ctx.lineWidth = 14 * scale;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // 同心圆
+                ctx.beginPath();
+                ctx.arc(0, 0, 140 * scale, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, 180 * scale, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 波浪线
+                ctx.beginPath();
+                for (let i = 0; i < 3; i++) {
+                    const yOffset = (i - 1) * 35 * scale;
+                    ctx.moveTo(100 * scale, yOffset);
+                    ctx.bezierCurveTo(
+                        200 * scale, yOffset - 60 * scale,
+                        250 * scale, yOffset + 60 * scale,
+                        350 * scale, yOffset
+                    );
+                    ctx.bezierCurveTo(
+                        400 * scale, yOffset - 50 * scale,
+                        450 * scale, yOffset + 50 * scale,
+                        550 * scale, yOffset
+                    );
+                }
+                ctx.stroke();
+
+                // 中心黑色圆角矩形
+                const rw = 360 * scale;
+                const rh = 140 * scale;
+                const rx = -rw / 2;
+                const ry = -rh / 2;
+                const radius = 24 * scale;
+                ctx.beginPath();
+                ctx.moveTo(rx + radius, ry);
+                ctx.lineTo(rx + rw - radius, ry);
+                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
+                ctx.lineTo(rx + rw, ry + rh - radius);
+                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
+                ctx.lineTo(rx + radius, ry + rh);
+                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
+                ctx.lineTo(rx, ry + radius);
+                ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
+                ctx.fill();
+
+                // 白色文字
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${80 * scale}px "Microsoft YaHei", "PingFang SC", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('抵押了', 0, 5 * scale);
+
+                ctx.restore();
+            }
+
+            // ── 重置水印位置（基于当前画布尺寸） ──
+            function resetStampPosition() {
+                if (!currentImage) return;
+                stampX = canvas.width / 2;
+                stampY = canvas.height / 2;
+                const minSize = Math.min(canvas.width, canvas.height);
+                stampScale = minSize / 1000;
+            }
+
+            // ── 图片上传处理 ──
+            function processImage() {
+                if (!currentImage) return;
+                canvas.style.display = 'block';
+                placeholderText.style.display = 'none';
+                downloadBtn.style.display = 'inline-flex';
+                resetStampBtn.style.display = 'inline-flex';
+                sliderGroup.style.display = 'flex';
+                toggleGroup.style.display = 'flex';
+                hintText.textContent = '💡 拖拽水印到任意位置 | 双击水印重置 | 滑杆调节抵押程度 | 开关切换 1:1 方形';
+                hintText.classList.add('active');
+                updateToggleHint();
+
+                // 先设定画布尺寸，再重置水印位置
+                const params = getDrawParams();
+                canvas.width = params.canvasW;
+                canvas.height = params.canvasH;
+
+                resetStampPosition();
+                redrawAll();
+                updateCursorClass();
+            }
+
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        currentImage = img;
+                        isDragging = false;
+                        // 新上传图片时重置方形开关
+                        squareToggle.checked = false;
+                        isSquareMode = false;
+                        updateToggleHint();
+                        processImage();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // ── 方形图开关 ──
+            function updateToggleHint() {
+                if (isSquareMode) {
+                    toggleHint.textContent = '1:1方形';
+                    toggleHint.classList.add('active');
+                } else {
+                    toggleHint.textContent = '原图比例';
+                    toggleHint.classList.remove('active');
+                }
+            }
+
+            squareToggle.addEventListener('change', function() {
+                isSquareMode = this.checked;
+                updateToggleHint();
+                if (!currentImage) return;
+
+                // 先获取新画布尺寸
+                const params = getDrawParams();
+                canvas.width = params.canvasW;
+                canvas.height = params.canvasH;
+
+                // 重新居中水印
+                resetStampPosition();
+                redrawAll();
+                updateCursorClass();
+            });
+
+            // 点击整个 toggle-group 也可以切换
+            toggleGroup.addEventListener('click', function(e) {
+                // 如果点击的不是 input 本身，则触发切换
+                if (e.target !== squareToggle) {
+                    squareToggle.checked = !squareToggle.checked;
+                    squareToggle.dispatchEvent(new Event('change'));
+                }
+            });
+
+            // ── 滑杆事件 ──
+            graySlider.addEventListener('input', function() {
+                grayIntensity = parseInt(this.value, 10);
+                sliderValue.textContent = grayIntensity + '%';
+                redrawAll();
+            });
+
+            // ── 重置水印按钮 ──
+            resetStampBtn.addEventListener('click', function() {
+                if (!currentImage) return;
+                resetStampPosition();
+                redrawAll();
+                updateCursorClass();
+            });
+
+            // ── 光标样式 ──
+            function updateCursorClass() {
+                if (isDragging) {
+                    canvasContainer.classList.add('dragging');
+                    canvasContainer.classList.remove('grabbable');
+                    canvas.style.cursor = 'grabbing';
+                } else if (currentImage) {
+                    canvasContainer.classList.remove('dragging');
+                    canvasContainer.classList.add('grabbable');
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvasContainer.classList.remove('dragging', 'grabbable');
+                    canvas.style.cursor = 'default';
+                }
+            }
+
+            // ── 鼠标事件 ──
+            canvas.addEventListener('mousedown', function(e) {
+                if (!currentImage) return;
+                const coords = getCanvasCoords(e.clientX, e.clientY);
+                if (hitTestStamp(coords.x, coords.y)) {
+                    isDragging = true;
+                    dragOffsetX = stampX - coords.x;
+                    dragOffsetY = stampY - coords.y;
+                    updateCursorClass();
+                    e.preventDefault();
+                }
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!currentImage) return;
+                const coords = getCanvasCoords(e.clientX, e.clientY);
+                if (isDragging) {
+                    stampX = coords.x + dragOffsetX;
+                    stampY = coords.y + dragOffsetY;
+                    redrawAll();
+                } else {
+                    if (hitTestStamp(coords.x, coords.y)) {
+                        canvas.style.cursor = 'grab';
+                        canvasContainer.classList.add('grabbable');
+                    } else {
+                        canvas.style.cursor = 'default';
+                        canvasContainer.classList.remove('grabbable');
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    updateCursorClass();
+                }
+            });
+
+            canvas.addEventListener('dblclick', function(e) {
+                if (!currentImage) return;
+                const coords = getCanvasCoords(e.clientX, e.clientY);
+                if (hitTestStamp(coords.x, coords.y)) {
+                    resetStampPosition();
+                    redrawAll();
+                    updateCursorClass();
+                }
+            });
+
+            // ── 触摸事件 ──
+            canvas.addEventListener('touchstart', function(e) {
+                if (!currentImage || e.touches.length !== 1) return;
+                const touch = e.touches[0];
+                const coords = getCanvasCoords(touch.clientX, touch.clientY);
+                if (hitTestStamp(coords.x, coords.y)) {
+                    isDragging = true;
+                    dragOffsetX = stampX - coords.x;
+                    dragOffsetY = stampY - coords.y;
+                    updateCursorClass();
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', function(e) {
+                if (!isDragging || e.touches.length !== 1) return;
+                const touch = e.touches[0];
+                const coords = getCanvasCoords(touch.clientX, touch.clientY);
+                stampX = coords.x + dragOffsetX;
+                stampY = coords.y + dragOffsetY;
+                redrawAll();
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    updateCursorClass();
+                }
+            });
+
+            // ── 下载 ──
+            downloadBtn.addEventListener('click', function() {
+                if (!currentImage) return;
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = '抵押了_' + new Date().getTime() + '.png';
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            updateCursorClass();
+        })();
+    </script>
+</body>
+</html>
