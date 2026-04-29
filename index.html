@@ -102,7 +102,7 @@
             color: #555;
         }
 
-        /* ── 滑杆样式 ── */
+        /* ── 滑杆通用样式 ── */
         .slider-group {
             display: flex;
             align-items: center;
@@ -126,7 +126,7 @@
             font-size: 0.85rem;
             font-weight: 600;
             color: #333;
-            min-width: 2.6em;
+            min-width: 2.8em;
             text-align: right;
         }
         input[type="range"] {
@@ -272,7 +272,7 @@
 <body>
     <div class="container">
         <h1>"抵押了" 图片处理工具</h1>
-        <p class="subtitle">上传图片 → 选择比例 → 调节抵押程度 → 拖拽水印 → 下载</p>
+        <p class="subtitle">上传图片 → 选择比例 → 调节抵押程度 → 调节水印大小 → 拖拽水印 → 下载</p>
 
         <!-- 按钮行 -->
         <div class="controls">
@@ -302,6 +302,13 @@
                 <input type="range" id="graySlider" min="0" max="100" value="80" step="1">
                 <span class="slider-value" id="sliderValue">80%</span>
             </div>
+
+            <!-- 水印大小滑杆 -->
+            <div class="slider-group" id="stampSizeGroup" style="display: none;">
+                <span class="slider-label">🔍 水印大小</span>
+                <input type="range" id="stampSizeSlider" min="30" max="200" value="100" step="1">
+                <span class="slider-value" id="stampSizeValue">100%</span>
+            </div>
         </div>
 
         <p class="hint" id="hintText"></p>
@@ -325,13 +332,17 @@
             const graySlider = document.getElementById('graySlider');
             const sliderValue = document.getElementById('sliderValue');
             const sliderGroup = document.getElementById('sliderGroup');
+            const stampSizeSlider = document.getElementById('stampSizeSlider');
+            const stampSizeValue = document.getElementById('stampSizeValue');
+            const stampSizeGroup = document.getElementById('stampSizeGroup');
             const squareToggle = document.getElementById('squareToggle');
             const toggleGroup = document.getElementById('toggleGroup');
             const toggleHint = document.getElementById('toggleHint');
 
-            let currentImage = null; // 原始上传图片
+            let currentImage = null;
             let grayIntensity = 80;
-            let isSquareMode = false; // 是否裁剪为 1:1 方形
+            let stampSizePercent = 100; // 水印大小百分比，默认 100%
+            let isSquareMode = false;
 
             // ── 水印状态 ──
             let stampX = 0;
@@ -342,14 +353,11 @@
             let dragOffsetY = 0;
 
             // ── 获取裁剪后的源绘制参数 ──
-            // 返回 { sx, sy, sw, sh, dx, dy, dw, dh } 用于 ctx.drawImage
             function getDrawParams() {
                 if (!currentImage) return null;
                 const imgW = currentImage.width;
                 const imgH = currentImage.height;
-
                 if (!isSquareMode) {
-                    // 原图比例：画布 = 图片尺寸
                     return {
                         sx: 0,
                         sy: 0,
@@ -363,7 +371,6 @@
                         canvasH: imgH,
                     };
                 } else {
-                    // 1:1 方形：取中心正方形
                     const size = Math.min(imgW, imgH);
                     const sx = (imgW - size) / 2;
                     const sy = (imgH - size) / 2;
@@ -393,7 +400,7 @@
                 };
             }
 
-            // ── 命中检测（逆旋转） ──
+            // ── 命中检测（逆旋转，使用当前 stampScale） ──
             function hitTestStamp(mx, my) {
                 if (!currentImage) return false;
                 const dx = mx - stampX;
@@ -406,13 +413,22 @@
                 return Math.abs(localX) < halfW && Math.abs(localY) < halfH;
             }
 
+            // ── 计算水印缩放（基础比例 × 用户调节百分比） ──
+            function calcStampScale() {
+                const minSize = Math.min(canvas.width, canvas.height);
+                const baseScale = minSize / 1000;
+                return baseScale * (stampSizePercent / 100);
+            }
+
             // ── 核心绘制 ──
             function redrawAll() {
                 if (!currentImage) return;
-
                 const params = getDrawParams();
                 canvas.width = params.canvasW;
                 canvas.height = params.canvasH;
+
+                // 每次重绘前同步 stampScale（画布尺寸可能已变）
+                stampScale = calcStampScale();
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -509,13 +525,12 @@
                 ctx.restore();
             }
 
-            // ── 重置水印位置（基于当前画布尺寸） ──
+            // ── 重置水印位置 ──
             function resetStampPosition() {
                 if (!currentImage) return;
                 stampX = canvas.width / 2;
                 stampY = canvas.height / 2;
-                const minSize = Math.min(canvas.width, canvas.height);
-                stampScale = minSize / 1000;
+                stampScale = calcStampScale();
             }
 
             // ── 图片上传处理 ──
@@ -526,12 +541,12 @@
                 downloadBtn.style.display = 'inline-flex';
                 resetStampBtn.style.display = 'inline-flex';
                 sliderGroup.style.display = 'flex';
+                stampSizeGroup.style.display = 'flex';
                 toggleGroup.style.display = 'flex';
-                hintText.textContent = '💡 拖拽水印到任意位置 | 双击水印重置 | 滑杆调节抵押程度 | 开关切换 1:1 方形';
+                hintText.textContent = '💡 拖拽水印 | 双击重置 | 抵押程度/水印大小可调 | 开关切换 1:1 方形';
                 hintText.classList.add('active');
                 updateToggleHint();
 
-                // 先设定画布尺寸，再重置水印位置
                 const params = getDrawParams();
                 canvas.width = params.canvasW;
                 canvas.height = params.canvasH;
@@ -550,7 +565,6 @@
                     img.onload = function() {
                         currentImage = img;
                         isDragging = false;
-                        // 新上传图片时重置方形开关
                         squareToggle.checked = false;
                         isSquareMode = false;
                         updateToggleHint();
@@ -576,31 +590,33 @@
                 isSquareMode = this.checked;
                 updateToggleHint();
                 if (!currentImage) return;
-
-                // 先获取新画布尺寸
                 const params = getDrawParams();
                 canvas.width = params.canvasW;
                 canvas.height = params.canvasH;
-
-                // 重新居中水印
                 resetStampPosition();
                 redrawAll();
                 updateCursorClass();
             });
 
-            // 点击整个 toggle-group 也可以切换
             toggleGroup.addEventListener('click', function(e) {
-                // 如果点击的不是 input 本身，则触发切换
                 if (e.target !== squareToggle) {
                     squareToggle.checked = !squareToggle.checked;
                     squareToggle.dispatchEvent(new Event('change'));
                 }
             });
 
-            // ── 滑杆事件 ──
+            // ── 抵押程度滑杆 ──
             graySlider.addEventListener('input', function() {
                 grayIntensity = parseInt(this.value, 10);
                 sliderValue.textContent = grayIntensity + '%';
+                redrawAll();
+            });
+
+            // ── 水印大小滑杆 ──
+            stampSizeSlider.addEventListener('input', function() {
+                stampSizePercent = parseInt(this.value, 10);
+                stampSizeValue.textContent = stampSizePercent + '%';
+                stampScale = calcStampScale();
                 redrawAll();
             });
 
